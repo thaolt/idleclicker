@@ -1,5 +1,4 @@
 #include <pthread.h>
-#include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -7,12 +6,15 @@
 #ifdef __linux__
 #define PLATFORM_LINUX
 #include "platform_linux.h"
-#elif _WIN32
-#include <windows.h>
+#include <raylib.h>
+#elif defined(_WIN32)
 #define PLATFORM_WINDOWS
-#elif __APPLE__
-#include <ApplicationServices/ApplicationServices.h>
+#include "platform_windows.h"
+#include <raylib.h>
+#elif defined(__APPLE__)
 #define PLATFORM_MACOS
+#include <ApplicationServices/ApplicationServices.h>
+#include <raylib.h>
 #endif
 
 typedef struct {
@@ -54,11 +56,16 @@ bool IsButtonClicked(Button *btn, Vector2 mousePos, bool mouseReleased) {
 
 // Global state for hotkey thread
 bool *g_isClicking = NULL;
+#ifdef PLATFORM_WINDOWS
+windows_mutex_t g_clickMutex_win;
+void *g_clickMutex = &g_clickMutex_win;
+#else
 pthread_mutex_t g_clickMutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 // Perform a mouse click at current cursor position
 void performClick() {
-#ifdef PLATFORM_LINUX
+#if defined(PLATFORM_LINUX)
   void *display = linux_open_display();
   if (display == NULL) {
     fprintf(stderr, "Cannot open display\n");
@@ -66,14 +73,9 @@ void performClick() {
   }
   linux_fake_click(display);
   linux_close_display(display);
-#elif PLATFORM_WINDOWS
-  INPUT inputs[2] = {0};
-  inputs[0].type = INPUT_MOUSE;
-  inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-  inputs[1].type = INPUT_MOUSE;
-  inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-  SendInput(2, inputs, sizeof(INPUT));
-#elif PLATFORM_MACOS
+#elif defined(PLATFORM_WINDOWS)
+  windows_fake_click();
+#elif defined(PLATFORM_MACOS)
   CGEventRef mouseDown = CGEventCreateMouseEvent(
       NULL, kCGEventLeftMouseDown, CGEventGetLocation(CGEventCreate(NULL)),
       kCGMouseButtonLeft);
@@ -89,10 +91,14 @@ void performClick() {
 
 // Hotkey listener thread (F8 global hotkey)
 void *hotkeyListener(void *arg) {
-#ifdef PLATFORM_LINUX
+#if defined(PLATFORM_LINUX)
   return linux_hotkey_listener(arg);
-#endif
+#elif defined(PLATFORM_WINDOWS)
+  return windows_hotkey_listener(arg);
+#else
+  // Placeholder for other platforms
   return NULL;
+#endif
 }
 
 int main(void) {
@@ -107,13 +113,24 @@ int main(void) {
   // Set up global pointer for hotkey thread
   g_isClicking = &isClicking;
 
-  // Start hotkey listener thread
+#ifdef PLATFORM_WINDOWS
+  // Initialize critical section for Windows
+  windows_mutex_init(&g_clickMutex_win);
+
+  // Start hotkey listener thread (Windows)
+  windows_thread_t hotkeyThread = windows_thread_create(hotkeyListener, NULL);
+  if (hotkeyThread == NULL) {
+    fprintf(stderr, "Failed to create hotkey thread\n");
+  }
+#else
+  // Start hotkey listener thread (POSIX)
   pthread_t hotkeyThread;
   int thread_result = pthread_create(&hotkeyThread, NULL, hotkeyListener, NULL);
   if (thread_result != 0) {
     fprintf(stderr, "Failed to create hotkey thread: %d\n", thread_result);
   }
   pthread_detach(hotkeyThread); // Detach so it cleans up automatically
+#endif
 
   // Define buttons
   Button minusBtn = {{20, 20, 30, 30}, "-", false, false};
