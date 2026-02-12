@@ -194,6 +194,11 @@ int main(void) {
     int intervalWidth = MeasureText(intervalText, 20);
     DrawText(intervalText, (300 - intervalWidth) / 2, 25, 20, WHITE);
 
+    // Draw hotkey hint
+    const char *hotkeyText = "F8 to trigger";
+    int hotkeyWidth = MeasureText(hotkeyText, 30);
+    DrawText(hotkeyText, (300 - hotkeyWidth) / 2, 85, 30, RED);
+
     // Draw second line: status label and quit button
     const char *statusText = isClicking ? "clicking" : "stopped";
     Color statusColor = isClicking ? GREEN : (Color){120, 120, 120, 255};
