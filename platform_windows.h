@@ -17,13 +17,18 @@ typedef void *windows_thread_t;
 #endif
 
 // Function declarations
+#ifdef _WIN32
 void windows_fake_click();
 void *windows_hotkey_listener(void *arg);
 
 // Wrapper functions for Windows threading (to avoid including windows.h in
 // main.c)
 void windows_mutex_init(windows_mutex_t *mutex);
+void windows_mutex_lock(windows_mutex_t *mutex);
+void windows_mutex_unlock(windows_mutex_t *mutex);
+void windows_sleep(int ms);
 windows_thread_t windows_thread_create(void *(*start_routine)(void *),
                                        void *arg);
+#endif
 
 #endif // PLATFORM_WINDOWS_H

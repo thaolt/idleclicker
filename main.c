@@ -9,7 +9,9 @@
 #include <raylib.h>
 #include <unistd.h>
 #elif defined(_WIN32)
+#ifndef PLATFORM_WINDOWS
 #define PLATFORM_WINDOWS
+#endif
 #include "platform_windows.h"
 #include <raylib.h>
 #elif defined(__APPLE__)
@@ -112,11 +114,11 @@ void *clickerWorker(void *arg) {
 
     // Read shared state safely
 #ifdef PLATFORM_WINDOWS
-    EnterCriticalSection(&g_clickMutex_win);
+    windows_mutex_lock(&g_clickMutex_win);
     if (g_isClicking)
       clicking = *g_isClicking;
     interval = g_clickInterval;
-    LeaveCriticalSection(&g_clickMutex_win);
+    windows_mutex_unlock(&g_clickMutex_win);
 #else
     pthread_mutex_lock(&g_clickMutex);
     if (g_isClicking)
@@ -129,14 +131,14 @@ void *clickerWorker(void *arg) {
       performClick();
       // Sleep for the interval
 #ifdef PLATFORM_WINDOWS
-      Sleep(interval);
+      windows_sleep(interval);
 #else
       usleep(interval * 1000);
 #endif
     } else {
       // Sleep briefly to avoid busy waiting
 #ifdef PLATFORM_WINDOWS
-      Sleep(100);
+      windows_sleep(100);
 #else
       usleep(100 * 1000);
 #endif
@@ -205,7 +207,7 @@ int main(void) {
     // Handle minus button
     if (IsButtonClicked(&minusBtn, mousePos, mouseReleased)) {
 #ifdef PLATFORM_WINDOWS
-      EnterCriticalSection(&g_clickMutex_win);
+      windows_mutex_lock(&g_clickMutex_win);
 #else
       pthread_mutex_lock(&g_clickMutex);
 #endif
@@ -213,7 +215,7 @@ int main(void) {
       if (g_clickInterval < 50)
         g_clickInterval = 50; // Minimum 50ms
 #ifdef PLATFORM_WINDOWS
-      LeaveCriticalSection(&g_clickMutex_win);
+      windows_mutex_unlock(&g_clickMutex_win);
 #else
       pthread_mutex_unlock(&g_clickMutex);
 #endif
@@ -222,7 +224,7 @@ int main(void) {
     // Handle plus button
     if (IsButtonClicked(&plusBtn, mousePos, mouseReleased)) {
 #ifdef PLATFORM_WINDOWS
-      EnterCriticalSection(&g_clickMutex_win);
+      windows_mutex_lock(&g_clickMutex_win);
 #else
       pthread_mutex_lock(&g_clickMutex);
 #endif
@@ -230,7 +232,7 @@ int main(void) {
       if (g_clickInterval > 2000)
         g_clickInterval = 2000; // Maximum 2000ms
 #ifdef PLATFORM_WINDOWS
-      LeaveCriticalSection(&g_clickMutex_win);
+      windows_mutex_unlock(&g_clickMutex_win);
 #else
       pthread_mutex_unlock(&g_clickMutex);
 #endif
@@ -245,13 +247,13 @@ int main(void) {
     statusHovered = CheckCollisionPointRec(mousePos, statusArea);
     if (statusHovered && mouseReleased) {
 #ifdef PLATFORM_WINDOWS
-      EnterCriticalSection(&g_clickMutex_win);
+      windows_mutex_lock(&g_clickMutex_win);
 #else
       pthread_mutex_lock(&g_clickMutex);
 #endif
       isClicking = !isClicking;
 #ifdef PLATFORM_WINDOWS
-      LeaveCriticalSection(&g_clickMutex_win);
+      windows_mutex_unlock(&g_clickMutex_win);
 #else
       pthread_mutex_unlock(&g_clickMutex);
 #endif
@@ -261,14 +263,14 @@ int main(void) {
     int currentInterval;
     bool currentClicking;
 #ifdef PLATFORM_WINDOWS
-    EnterCriticalSection(&g_clickMutex_win);
+    windows_mutex_lock(&g_clickMutex_win);
 #else
     pthread_mutex_lock(&g_clickMutex);
 #endif
     currentInterval = g_clickInterval;
     currentClicking = isClicking;
 #ifdef PLATFORM_WINDOWS
-    LeaveCriticalSection(&g_clickMutex_win);
+    windows_mutex_unlock(&g_clickMutex_win);
 #else
     pthread_mutex_unlock(&g_clickMutex);
 #endif

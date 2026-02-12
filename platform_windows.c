@@ -56,6 +56,16 @@ void windows_mutex_init(CRITICAL_SECTION *mutex) {
   InitializeCriticalSection(mutex);
 }
 
+void windows_mutex_lock(CRITICAL_SECTION *mutex) {
+  EnterCriticalSection(mutex);
+}
+
+void windows_mutex_unlock(CRITICAL_SECTION *mutex) {
+  LeaveCriticalSection(mutex);
+}
+
+void windows_sleep(int ms) { Sleep(ms); }
+
 HANDLE windows_thread_create(void *(*start_routine)(void *), void *arg) {
   return CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)start_routine, arg, 0,
                       NULL);
