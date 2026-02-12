@@ -7,6 +7,7 @@
 #define PLATFORM_LINUX
 #include "platform_linux.h"
 #include <raylib.h>
+#include <unistd.h>
 #elif defined(_WIN32)
 #define PLATFORM_WINDOWS
 #include "platform_windows.h"
@@ -56,6 +57,8 @@ bool IsButtonClicked(Button *btn, Vector2 mousePos, bool mouseReleased) {
 
 // Global state for hotkey thread
 bool *g_isClicking = NULL;
+int g_clickInterval = 200; // Default 200ms
+
 #ifdef PLATFORM_WINDOWS
 windows_mutex_t g_clickMutex_win;
 void *g_clickMutex = &g_clickMutex_win;
@@ -101,14 +104,53 @@ void *hotkeyListener(void *arg) {
 #endif
 }
 
+// Background clicker thread
+void *clickerWorker(void *arg) {
+  while (1) {
+    bool clicking = false;
+    int interval = 200;
+
+    // Read shared state safely
+#ifdef PLATFORM_WINDOWS
+    EnterCriticalSection(&g_clickMutex_win);
+    if (g_isClicking)
+      clicking = *g_isClicking;
+    interval = g_clickInterval;
+    LeaveCriticalSection(&g_clickMutex_win);
+#else
+    pthread_mutex_lock(&g_clickMutex);
+    if (g_isClicking)
+      clicking = *g_isClicking;
+    interval = g_clickInterval;
+    pthread_mutex_unlock(&g_clickMutex);
+#endif
+
+    if (clicking) {
+      performClick();
+      // Sleep for the interval
+#ifdef PLATFORM_WINDOWS
+      Sleep(interval);
+#else
+      usleep(interval * 1000);
+#endif
+    } else {
+      // Sleep briefly to avoid busy waiting
+#ifdef PLATFORM_WINDOWS
+      Sleep(100);
+#else
+      usleep(100 * 1000);
+#endif
+    }
+  }
+  return NULL;
+}
+
 int main(void) {
   InitWindow(300, 200, "Idle Clicker");
   SetTargetFPS(60);
 
   // State variables
-  int clickInterval = 200; // Default 200ms
   bool isClicking = false;
-  double clickTimer = 0.0;
 
   // Set up global pointer for hotkey thread
   g_isClicking = &isClicking;
@@ -122,6 +164,12 @@ int main(void) {
   if (hotkeyThread == NULL) {
     fprintf(stderr, "Failed to create hotkey thread\n");
   }
+
+  // Start clicker worker thread (Windows)
+  windows_thread_t clickerThread = windows_thread_create(clickerWorker, NULL);
+  if (clickerThread == NULL) {
+    fprintf(stderr, "Failed to create clicker thread\n");
+  }
 #else
   // Start hotkey listener thread (POSIX)
   pthread_t hotkeyThread;
@@ -130,6 +178,14 @@ int main(void) {
     fprintf(stderr, "Failed to create hotkey thread: %d\n", thread_result);
   }
   pthread_detach(hotkeyThread); // Detach so it cleans up automatically
+
+  // Start clicker worker thread (POSIX)
+  pthread_t clickerThread;
+  thread_result = pthread_create(&clickerThread, NULL, clickerWorker, NULL);
+  if (thread_result != 0) {
+    fprintf(stderr, "Failed to create clicker thread: %d\n", thread_result);
+  }
+  pthread_detach(clickerThread);
 #endif
 
   // Define buttons
@@ -146,27 +202,38 @@ int main(void) {
     bool mouseDown = IsMouseButtonDown(MOUSE_LEFT_BUTTON);
     bool mouseReleased = IsMouseButtonReleased(MOUSE_LEFT_BUTTON);
 
-    // Update click timer
-    if (isClicking) {
-      clickTimer += GetFrameTime();
-      if (clickTimer >= clickInterval / 1000.0) {
-        performClick();
-        clickTimer = 0.0;
-      }
-    }
-
     // Handle minus button
     if (IsButtonClicked(&minusBtn, mousePos, mouseReleased)) {
-      clickInterval -= 10;
-      if (clickInterval < 50)
-        clickInterval = 50; // Minimum 50ms
+#ifdef PLATFORM_WINDOWS
+      EnterCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_lock(&g_clickMutex);
+#endif
+      g_clickInterval -= 10;
+      if (g_clickInterval < 50)
+        g_clickInterval = 50; // Minimum 50ms
+#ifdef PLATFORM_WINDOWS
+      LeaveCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_unlock(&g_clickMutex);
+#endif
     }
 
     // Handle plus button
     if (IsButtonClicked(&plusBtn, mousePos, mouseReleased)) {
-      clickInterval += 10;
-      if (clickInterval > 2000)
-        clickInterval = 2000; // Maximum 2000ms
+#ifdef PLATFORM_WINDOWS
+      EnterCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_lock(&g_clickMutex);
+#endif
+      g_clickInterval += 10;
+      if (g_clickInterval > 2000)
+        g_clickInterval = 2000; // Maximum 2000ms
+#ifdef PLATFORM_WINDOWS
+      LeaveCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_unlock(&g_clickMutex);
+#endif
     }
 
     // Handle quit button
@@ -177,9 +244,34 @@ int main(void) {
     // Handle status area click (toggle clicking)
     statusHovered = CheckCollisionPointRec(mousePos, statusArea);
     if (statusHovered && mouseReleased) {
+#ifdef PLATFORM_WINDOWS
+      EnterCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_lock(&g_clickMutex);
+#endif
       isClicking = !isClicking;
-      clickTimer = 0.0;
+#ifdef PLATFORM_WINDOWS
+      LeaveCriticalSection(&g_clickMutex_win);
+#else
+      pthread_mutex_unlock(&g_clickMutex);
+#endif
     }
+
+    // Read shared state for drawing
+    int currentInterval;
+    bool currentClicking;
+#ifdef PLATFORM_WINDOWS
+    EnterCriticalSection(&g_clickMutex_win);
+#else
+    pthread_mutex_lock(&g_clickMutex);
+#endif
+    currentInterval = g_clickInterval;
+    currentClicking = isClicking;
+#ifdef PLATFORM_WINDOWS
+    LeaveCriticalSection(&g_clickMutex_win);
+#else
+    pthread_mutex_unlock(&g_clickMutex);
+#endif
 
     BeginDrawing();
     ClearBackground(DARKGRAY);
@@ -190,7 +282,7 @@ int main(void) {
 
     // Draw interval label (centered)
     char intervalText[32];
-    sprintf(intervalText, "%dms", clickInterval);
+    sprintf(intervalText, "%dms", currentInterval);
     int intervalWidth = MeasureText(intervalText, 20);
     DrawText(intervalText, (300 - intervalWidth) / 2, 25, 20, WHITE);
 
@@ -200,8 +292,8 @@ int main(void) {
     DrawText(hotkeyText, (300 - hotkeyWidth) / 2, 85, 30, RED);
 
     // Draw second line: status label and quit button
-    const char *statusText = isClicking ? "clicking" : "stopped";
-    Color statusColor = isClicking ? GREEN : (Color){120, 120, 120, 255};
+    const char *statusText = currentClicking ? "clicking" : "stopped";
+    Color statusColor = currentClicking ? GREEN : (Color){120, 120, 120, 255};
 
     // Draw status area with hover effect
     if (statusHovered) {
