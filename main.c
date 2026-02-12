@@ -1,6 +1,19 @@
+#include <pthread.h>
 #include <raylib.h>
 #include <stdbool.h>
 #include <stdio.h>
+
+// Platform detection
+#ifdef __linux__
+#define PLATFORM_LINUX
+#include "platform_linux.h"
+#elif _WIN32
+#include <windows.h>
+#define PLATFORM_WINDOWS
+#elif __APPLE__
+#include <ApplicationServices/ApplicationServices.h>
+#define PLATFORM_MACOS
+#endif
 
 typedef struct {
   Rectangle rect;
@@ -39,6 +52,49 @@ bool IsButtonClicked(Button *btn, Vector2 mousePos, bool mouseReleased) {
   return btn->isHovered && mouseReleased;
 }
 
+// Global state for hotkey thread
+bool *g_isClicking = NULL;
+pthread_mutex_t g_clickMutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Perform a mouse click at current cursor position
+void performClick() {
+#ifdef PLATFORM_LINUX
+  void *display = linux_open_display();
+  if (display == NULL) {
+    fprintf(stderr, "Cannot open display\n");
+    return;
+  }
+  linux_fake_click(display);
+  linux_close_display(display);
+#elif PLATFORM_WINDOWS
+  INPUT inputs[2] = {0};
+  inputs[0].type = INPUT_MOUSE;
+  inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+  inputs[1].type = INPUT_MOUSE;
+  inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
+  SendInput(2, inputs, sizeof(INPUT));
+#elif PLATFORM_MACOS
+  CGEventRef mouseDown = CGEventCreateMouseEvent(
+      NULL, kCGEventLeftMouseDown, CGEventGetLocation(CGEventCreate(NULL)),
+      kCGMouseButtonLeft);
+  CGEventRef mouseUp = CGEventCreateMouseEvent(
+      NULL, kCGEventLeftMouseUp, CGEventGetLocation(CGEventCreate(NULL)),
+      kCGMouseButtonLeft);
+  CGEventPost(kCGHIDEventTap, mouseDown);
+  CGEventPost(kCGHIDEventTap, mouseUp);
+  CFRelease(mouseDown);
+  CFRelease(mouseUp);
+#endif
+}
+
+// Hotkey listener thread (F8 global hotkey)
+void *hotkeyListener(void *arg) {
+#ifdef PLATFORM_LINUX
+  return linux_hotkey_listener(arg);
+#endif
+  return NULL;
+}
+
 int main(void) {
   InitWindow(300, 200, "Idle Clicker");
   SetTargetFPS(60);
@@ -47,6 +103,17 @@ int main(void) {
   int clickInterval = 200; // Default 200ms
   bool isClicking = false;
   double clickTimer = 0.0;
+
+  // Set up global pointer for hotkey thread
+  g_isClicking = &isClicking;
+
+  // Start hotkey listener thread
+  pthread_t hotkeyThread;
+  int thread_result = pthread_create(&hotkeyThread, NULL, hotkeyListener, NULL);
+  if (thread_result != 0) {
+    fprintf(stderr, "Failed to create hotkey thread: %d\n", thread_result);
+  }
+  pthread_detach(hotkeyThread); // Detach so it cleans up automatically
 
   // Define buttons
   Button minusBtn = {{20, 20, 30, 30}, "-", false, false};
@@ -66,7 +133,7 @@ int main(void) {
     if (isClicking) {
       clickTimer += GetFrameTime();
       if (clickTimer >= clickInterval / 1000.0) {
-        // TODO: Perform actual click action here
+        performClick();
         clickTimer = 0.0;
       }
     }
