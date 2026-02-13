@@ -7,7 +7,7 @@ $(BUILD_DIR)/idleclicker: $(BUILD_DIR) main.c platform_linux.c $(BUILD_DIR)/libr
 
 windows:
 	docker build -t idleclicker-mingw .
-	docker run --rm -v $(PWD):/work --user $(id -u):$(id -g) idleclicker-mingw /work/build-windows.sh
+	docker run --rm -v $(PWD):/work --user $(shell id -u):$(shell id -g) idleclicker-mingw /work/build-windows.sh
 
 clean:
 	rm -rf $(BUILD_DIR)
