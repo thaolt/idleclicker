@@ -64,6 +64,16 @@ By default, it installs to `/usr/local`. You can specify a different prefix:
 sudo make install PREFIX=/usr
 ```
 
+## License
+
+MIT License
+
+## Contributing
+
+I need help with MacOS build and testing.
+
+Contributions are welcome! Please open an issue or submit a pull request.
+
 ## Attributions
 
 * [Click](https://icons8.com/icon/23547/natural-user-interface) icon by [Icons8](https://icons8.com)
