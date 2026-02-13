@@ -26,7 +26,7 @@ cp raylib/src/libraylib.a build/libraylib_win.a
 
 # Compile platform_windows.c separately (to avoid header conflicts)
 echo "Compiling platform_windows.c..."
-$CC -c platform_windows.c -o build/platform_windows.o \
+$CC -Os -c platform_windows.c -o build/platform_windows.o \
     -D_WIN32 -DPLATFORM_WINDOWS
 
 
