@@ -1,4 +1,5 @@
 BUILD_DIR ?= build
+PREFIX ?= /usr/local
 
 $(BUILD_DIR)/idleclicker: $(BUILD_DIR) main.c platform_linux.c $(BUILD_DIR)/libraylib.a
 	gcc -c platform_linux.c -o $(BUILD_DIR)/platform_linux.o
@@ -11,7 +12,13 @@ windows:
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: clean windows
+install:
+	install -d $(PREFIX)/bin $(PREFIX)/share/applications $(PREFIX)/share/icons
+	install -m 755 $(BUILD_DIR)/idleclicker $(PREFIX)/bin/idleclicker
+	install -m 755 idleclicker.desktop $(PREFIX)/share/applications/idleclicker.desktop
+	install -m 644 idleclicker.png $(PREFIX)/share/icons/idleclicker.png
+
+.PHONY: clean windows install
 
 $(BUILD_DIR):
 	$(MAKE) -C raylib/src clean

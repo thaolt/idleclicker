@@ -1,0 +1,9 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Idle Clicker
+Comment=A simple idle clicker game
+Exec=idleclicker
+Icon=idleclicker
+Terminal=false
+Categories=Game;
