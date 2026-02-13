@@ -16,9 +16,10 @@
 #include <raylib.h>
 #elif defined(__APPLE__)
 #define PLATFORM_MACOS
-#include <ApplicationServices/ApplicationServices.h>
 #include <raylib.h>
 #endif
+
+#include "icon_data.h"
 
 typedef struct {
   Rectangle rect;
@@ -149,6 +150,15 @@ void *clickerWorker(void *arg) {
 
 int main(void) {
   InitWindow(300, 200, "Idle Clicker");
+
+  // Load icon from memory (embedded)
+  Image icon =
+      LoadImageFromMemory(".png", idleclicker_png, idleclicker_png_len);
+  if (icon.data != NULL) {
+    SetWindowIcon(icon);
+    UnloadImage(icon);
+  }
+
   SetTargetFPS(60);
 
   // State variables

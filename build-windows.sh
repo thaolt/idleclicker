@@ -28,9 +28,14 @@ echo "Compiling platform_windows.c..."
 $CC -c platform_windows.c -o build/platform_windows.o \
     -D_WIN32 -DPLATFORM_WINDOWS
 
+
+# Compile resources
+echo "Compiling resources..."
+x86_64-w64-mingw32-windres idleclicker.rc -O coff -o build/idleclicker.res
+
 # Compile and link main executable
 echo "Compiling main.c and linking..."
-$CC -o build/idleclicker.exe main.c build/platform_windows.o \
+$CC -o build/idleclicker.exe main.c build/platform_windows.o build/idleclicker.res \
     -D_WIN32 -DPLATFORM_WINDOWS \
     -Iraylib/src \
     -Lbuild -lraylib_win \
