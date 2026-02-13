@@ -7,6 +7,7 @@ echo "Building Windows executable with MinGW..."
 export CC=x86_64-w64-mingw32-gcc
 export AR=x86_64-w64-mingw32-ar
 export RANLIB=x86_64-w64-mingw32-ranlib
+export STRIP=x86_64-w64-mingw32-strip
 
 # Build raylib for Windows
 echo "Building raylib for Windows..."
@@ -35,12 +36,16 @@ x86_64-w64-mingw32-windres idleclicker.rc -O coff -o build/idleclicker.res
 
 # Compile and link main executable
 echo "Compiling main.c and linking..."
-$CC -o build/idleclicker.exe main.c build/platform_windows.o build/idleclicker.res \
+$CC -Os -o build/idleclicker.exe main.c build/platform_windows.o build/idleclicker.res \
     -D_WIN32 -DPLATFORM_WINDOWS \
     -Iraylib/src \
     -Lbuild -lraylib_win \
     -lopengl32 -lgdi32 -lwinmm \
     -static
 
-echo "Build complete! Executable: build/idleclicker.exe"
-ls -lh build/idleclicker.exe
+$STRIP build/idleclicker.exe
+
+mv build/idleclicker.exe build/idleclicker.win32.exe
+
+echo "Build complete! Executable: build/idleclicker.win32.exe"
+ls -lh build/idleclicker.win32.exe

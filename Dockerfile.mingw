@@ -11,6 +11,8 @@ RUN apk add --no-cache \
     libx11-dev libxext-dev libxi-dev libxtst-dev \
     libxcb-static libxcb-dev \
     libxinerama-dev libxcursor-dev libxrandr-dev libxdmcp-dev \
+    mesa-dev \
+    gdb \
     wget
 
 RUN cd /tmp && \

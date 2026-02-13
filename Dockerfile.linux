@@ -1,0 +1,29 @@
+FROM debian:bookworm-slim
+
+# Install build dependencies for static linking with glibc
+# glibc's static binary supports dlopen, unlike musl
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libx11-dev \
+    libxext-dev \
+    libxi-dev \
+    libxtst-dev \
+    libxinerama-dev \
+    libxcursor-dev \
+    libxrandr-dev \
+    libxrender-dev \
+    libxfixes-dev \
+    libxdmcp-dev \
+    libxcb1-dev \
+    libxau-dev \
+    libx11-xcb-dev \
+    libglx-dev \
+    libgl-dev \
+    mesa-common-dev \
+    gdb \
+    wget \
+    xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /work
+CMD ["/bin/bash"]
