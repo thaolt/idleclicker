@@ -40,6 +40,7 @@ $CC -Os -o build/idleclicker.exe main.c build/platform_windows.o build/idleclick
     -D_WIN32 -DPLATFORM_WINDOWS \
     -Iraylib/src \
     -Lbuild -lraylib_win \
+    -mwindows \
     -lopengl32 -lgdi32 -lwinmm \
     -static
 
