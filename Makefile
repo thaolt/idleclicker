@@ -3,7 +3,10 @@ PREFIX ?= /usr/local
 
 $(BUILD_DIR)/idleclicker: $(BUILD_DIR) main.c platform_linux.c $(BUILD_DIR)/libraylib.a icon_data.h
 	gcc -c platform_linux.c -o $(BUILD_DIR)/platform_linux.o
-	gcc -Os -o $(BUILD_DIR)/idleclicker main.c $(BUILD_DIR)/platform_linux.o -Iraylib/src -L$(BUILD_DIR) -lraylib -lm -lX11 -lXi -lXtst -lpthread
+	gcc -Os -o $(BUILD_DIR)/idleclicker main.c $(BUILD_DIR)/platform_linux.o \
+		-Iraylib/src -L$(BUILD_DIR) -lraylib -lm -lX11 -lXi -lXtst -lpthread \
+		-lXinerama -lXcursor -lXext -lxcb -lXau -lXdmcp -static
+	strip $(BUILD_DIR)/idleclicker
 
 windows:
 	docker build -t idleclicker-mingw .

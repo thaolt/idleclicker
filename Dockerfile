@@ -5,7 +5,21 @@ RUN apk add --no-cache \
     mingw-w64-gcc \
     make \
     git \
-    bash
+    bash \
+    build-base linux-headers \
+    libx11-static libxext-static libxi-static libxtst-static \
+    libx11-dev libxext-dev libxi-dev libxtst-dev \
+    libxcb-static libxcb-dev \
+    libxinerama-dev libxcursor-dev libxrandr-dev libxdmcp-dev \
+    wget
+
+RUN cd /tmp && \
+    wget https://www.x.org/pub/individual/lib/libXau-1.0.12.tar.xz && \
+    tar -xJvf libXau-1.0.12.tar.xz && \
+    cd libXau-1.0.12 && \
+    ./configure --prefix=/usr --enable-static --disable-shared && \
+    make && \
+    make install
 
 WORKDIR /work
 
